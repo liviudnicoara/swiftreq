@@ -19,8 +19,10 @@ type Error struct {
 }
 
 func (e *Error) Error() string {
-	return fmt.Sprintf("message: %s\n cause: %s\n statusCode: %d", e.Message, e.Cause, e.StatusCode)
+	return fmt.Sprintf("message: %s\n cause: %s\n statusCode: %d", e.Message, e.Cause.Error(), e.StatusCode)
 }
+
+type EmptyRequest struct{}
 
 type Response struct {
 	Data       interface{}
@@ -29,50 +31,67 @@ type Response struct {
 	StatusCode int
 }
 
-type ReqExec[TReq, TResp any] struct {
+type RequestExecutor struct {
+	client http.Client
 }
 
-func (r *ReqExec[TReq, TResp]) Get(
+func NewRequestExecutor(client http.Client) *RequestExecutor {
+	return &RequestExecutor{
+		client: client,
+	}
+}
+
+type Request[TReq, TResp any] struct {
+	re *RequestExecutor
+}
+
+func NewRequest[TReq, TResp any](re *RequestExecutor) *Request[TReq, TResp] {
+	return &Request[TReq, TResp]{
+		re: re,
+	}
+}
+
+func (r *Request[TReq, TResp]) Get(
 	ctx context.Context,
 	url string,
 	headers map[string]string,
 	queryParameters url.Values,
 	request *TReq) (*TResp, error) {
 
-	return makeHTTPRequest[TReq, TResp](ctx, url, "GET", headers, queryParameters, request)
+	return r.makeHTTPRequest(ctx, url, "GET", headers, queryParameters, request)
 }
 
-func (r *ReqExec[TReq, TResp]) Post(
+func (r *Request[TReq, TResp]) Post(
 	ctx context.Context,
 	url string,
 	headers map[string]string,
 	queryParameters url.Values,
 	request *TReq) (*TResp, error) {
 
-	return makeHTTPRequest[TReq, TResp](ctx, url, "POST", headers, queryParameters, request)
+	return r.makeHTTPRequest(ctx, url, "POST", headers, queryParameters, request)
 }
 
-func (r *ReqExec[TReq, TResp]) Put(
+func (r *Request[TReq, TResp]) Put(
 	ctx context.Context,
 	url string,
 	headers map[string]string,
 	queryParameters url.Values,
 	request *TReq) (*TResp, error) {
 
-	return makeHTTPRequest[TReq, TResp](ctx, url, "PUT", headers, queryParameters, request)
+	return r.makeHTTPRequest(ctx, url, "PUT", headers, queryParameters, request)
 }
 
-func (r *ReqExec[TReq, TResp]) Delete(
+func (r *Request[TReq, TResp]) Delete(
 	ctx context.Context,
 	url string,
 	headers map[string]string,
 	queryParameters url.Values,
 	request *TReq) (*TResp, error) {
 
-	return makeHTTPRequest[TReq, TResp](ctx, url, "DELETE", headers, queryParameters, request)
+	return r.makeHTTPRequest(ctx, url, "DELETE", headers, queryParameters, request)
 }
 
-func makeHTTPRequest[TReq, TResp any](
+func (r *Request[TReq, TResp]) makeHTTPRequest(
 	ctx context.Context,
 	fullUrl string,
 	httpMethod string,
@@ -84,8 +103,6 @@ func makeHTTPRequest[TReq, TResp any](
 	if !ok {
 		return nil, err
 	}
-
-	client := http.Client{}
 
 	// if it's a GET, we need to append the query parameters.
 	if httpMethod == "GET" {
@@ -100,23 +117,20 @@ func makeHTTPRequest[TReq, TResp any](
 	}
 
 	// regardless of GET or POST, we can safely add the body
-	var buff *bytes.Buffer
-	if request != nil {
-		body, err := json.Marshal(request)
-		if err != nil {
-			return nil, &Error{
-				Message: fmt.Sprintf("could not marshal body for request %s. Body:\n %+v", fullUrl, request),
-				Cause:   err,
-			}
+	body, err := json.Marshal(request)
+	if err != nil {
+		return nil, &Error{
+			Message: fmt.Sprintf("could not marshal body for request %s. Body:\n %+v", fullUrl, request),
+			Cause:   err,
 		}
+	}
 
-		buff = bytes.NewBuffer(body)
+	buff := bytes.NewBuffer(body)
 
-		if err != nil {
-			return nil, &Error{
-				Message: fmt.Sprintf("could not create body buffer for request %s. Body:\n %+v", fullUrl, request),
-				Cause:   err,
-			}
+	if err != nil {
+		return nil, &Error{
+			Message: fmt.Sprintf("could not create body buffer for request %s. Body:\n %+v", fullUrl, request),
+			Cause:   err,
 		}
 	}
 
@@ -137,7 +151,7 @@ func makeHTTPRequest[TReq, TResp any](
 	log.Printf("%s %s\n", httpMethod, req.URL.String())
 
 	// finally, do the request
-	res, err := client.Do(req)
+	res, err := r.re.client.Do(req)
 	if err != nil {
 		return nil, &Error{
 			Message: "failed to make request " + fullUrl,
