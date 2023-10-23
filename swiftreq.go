@@ -2,12 +2,25 @@ package swiftreq
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"strings"
 )
+
+type Error struct {
+	Message    string
+	Cause      error
+	StatusCode int
+}
+
+func (e *Error) Error() string {
+	return fmt.Sprintf("message: %s\n cause: %s\n statusCode: %d", e.Message, e.Cause, e.StatusCode)
+}
 
 type Response struct {
 	Data       interface{}
@@ -16,190 +29,176 @@ type Response struct {
 	StatusCode int
 }
 
-type ReqExec struct {
+type ReqExec[TReq, TResp any] struct {
 }
 
-func (r *ReqExec) Get(url string) (*Response, error) {
-	if !isValidURL(url) {
-		return nil, fmt.Errorf("invalid URL: %s", url)
-	}
+func (r *ReqExec[TReq, TResp]) Get(
+	ctx context.Context,
+	url string,
+	headers map[string]string,
+	queryParameters url.Values,
+	request *TReq) (*TResp, error) {
 
-	resp, err := http.Get(url)
-
-	if err != nil {
-		return nil, fmt.Errorf("GET request failed: %v", url)
-	}
-
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-
-	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %v", err)
-	}
-
-	var result map[string]interface{}
-	err = json.Unmarshal(body, &result)
-
-	if err != nil {
-		return nil, fmt.Errorf("error decoding response body: %v", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		return &Response{
-			Success:    false,
-			Error:      fmt.Errorf("error received: %v", result),
-			StatusCode: resp.StatusCode,
-		}, nil
-	}
-
-	return &Response{
-		Success:    true,
-		Data:       result,
-		StatusCode: resp.StatusCode,
-	}, nil
+	return makeHTTPRequest[TReq, TResp](ctx, url, "GET", headers, queryParameters, request)
 }
 
-func (r *ReqExec) Post(url string, data interface{}) (*Response, error) {
-	if !isValidURL(url) {
-		return nil, fmt.Errorf("invalid URL: %s", url)
+func (r *ReqExec[TReq, TResp]) Post(
+	ctx context.Context,
+	url string,
+	headers map[string]string,
+	queryParameters url.Values,
+	request *TReq) (*TResp, error) {
 
-	}
-
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling JSON data: %v", err)
-	}
-
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("POST request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %v", err)
-	}
-
-	var result map[string]interface{}
-	err = json.Unmarshal(body, &result)
-
-	if err != nil {
-		return nil, fmt.Errorf("error decoding response body: %v", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		return &Response{
-			Success:    false,
-			Error:      fmt.Errorf("error received: %v", result),
-			StatusCode: resp.StatusCode,
-		}, nil
-	}
-
-	return &Response{
-		Success:    true,
-		Data:       result,
-		StatusCode: resp.StatusCode,
-	}, nil
+	return makeHTTPRequest[TReq, TResp](ctx, url, "POST", headers, queryParameters, request)
 }
 
-func (r *ReqExec) Put(url string, data interface{}) (*Response, error) {
-	if !isValidURL(url) {
-		return nil, fmt.Errorf("invalid URL: %s", url)
-	}
+func (r *ReqExec[TReq, TResp]) Put(
+	ctx context.Context,
+	url string,
+	headers map[string]string,
+	queryParameters url.Values,
+	request *TReq) (*TResp, error) {
 
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling JSON data: %v", err)
-	}
-
-	request, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("error creating PUT request: %v", err)
-	}
-
-	request.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("PUT request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %v", err)
-	}
-
-	var result map[string]interface{}
-	err = json.Unmarshal(body, &result)
-
-	if err != nil {
-		return nil, fmt.Errorf("error decoding response body: %v", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		return &Response{
-			Success:    false,
-			Error:      fmt.Errorf("error received: %v", result),
-			StatusCode: resp.StatusCode,
-		}, nil
-	}
-
-	return &Response{
-		Success:    true,
-		Data:       result,
-		StatusCode: resp.StatusCode,
-	}, nil
+	return makeHTTPRequest[TReq, TResp](ctx, url, "PUT", headers, queryParameters, request)
 }
 
-func (r *ReqExec) Delete(url string) (*Response, error) {
-	if !isValidURL(url) {
-		return nil, fmt.Errorf("invalid URL: %s", url)
-	}
+func (r *ReqExec[TReq, TResp]) Delete(
+	ctx context.Context,
+	url string,
+	headers map[string]string,
+	queryParameters url.Values,
+	request *TReq) (*TResp, error) {
 
-	request, err := http.NewRequest("DELETE", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error creating DELETE request: %v", err)
-	}
-
-	client := &http.Client{}
-	resp, err := client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("DELETE request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %v", err)
-	}
-
-	var result map[string]interface{}
-	err = json.Unmarshal(body, &result)
-
-	if err != nil {
-		return nil, fmt.Errorf("error decoding response body: %v", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		return &Response{
-			Success:    false,
-			Error:      fmt.Errorf("error received: %v", result),
-			StatusCode: resp.StatusCode,
-		}, nil
-	}
-
-	return &Response{
-		Success:    true,
-		Data:       result,
-		StatusCode: resp.StatusCode,
-	}, nil
+	return makeHTTPRequest[TReq, TResp](ctx, url, "DELETE", headers, queryParameters, request)
 }
 
-func isValidURL(u string) bool {
+func makeHTTPRequest[TReq, TResp any](
+	ctx context.Context,
+	fullUrl string,
+	httpMethod string,
+	headers map[string]string,
+	queryParameters url.Values,
+	request *TReq) (*TResp, error) {
+
+	ok, u, err := isValidURL(fullUrl)
+	if !ok {
+		return nil, err
+	}
+
+	client := http.Client{}
+
+	// if it's a GET, we need to append the query parameters.
+	if httpMethod == "GET" {
+		q := u.Query()
+
+		for k, v := range queryParameters {
+			// this depends on the type of api, you may need to do it for each of v
+			q.Set(k, strings.Join(v, ","))
+		}
+		// set the query to the encoded parameters
+		u.RawQuery = q.Encode()
+	}
+
+	// regardless of GET or POST, we can safely add the body
+	var buff *bytes.Buffer
+	if request != nil {
+		body, err := json.Marshal(request)
+		if err != nil {
+			return nil, &Error{
+				Message: fmt.Sprintf("could not marshal body for request %s. Body:\n %+v", fullUrl, request),
+				Cause:   err,
+			}
+		}
+
+		buff = bytes.NewBuffer(body)
+
+		if err != nil {
+			return nil, &Error{
+				Message: fmt.Sprintf("could not create body buffer for request %s. Body:\n %+v", fullUrl, request),
+				Cause:   err,
+			}
+		}
+	}
+
+	req, err := http.NewRequestWithContext(ctx, httpMethod, u.String(), buff)
+	if err != nil {
+		return nil, &Error{
+			Message: "could not create request " + fullUrl,
+			Cause:   err,
+		}
+	}
+
+	// for each header passed, add the header value to the request
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	// optional: log the request for easier stack tracing
+	log.Printf("%s %s\n", httpMethod, req.URL.String())
+
+	// finally, do the request
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, &Error{
+			Message: "failed to make request " + fullUrl,
+			Cause:   err,
+		}
+	}
+
+	if res == nil {
+		return nil, &Error{
+			Message: fmt.Sprintf("calling %s returned empty response", u.String()),
+		}
+	}
+
+	responseData, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, &Error{
+			Message: "failed to read response body for url request " + fullUrl,
+			Cause:   err,
+		}
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode >= http.StatusBadRequest {
+		return nil, &Error{
+			Message:    fmt.Sprintf("error calling %s", u.String()),
+			Cause:      fmt.Errorf("%s", responseData),
+			StatusCode: res.StatusCode,
+		}
+	}
+
+	var responseObject TResp
+	err = json.Unmarshal(responseData, &responseObject)
+
+	if err != nil {
+		return nil, &Error{
+			Message:    "error unmarshaling response for request " + fullUrl,
+			Cause:      err,
+			StatusCode: res.StatusCode,
+		}
+	}
+
+	return &responseObject, nil
+}
+
+func isValidURL(u string) (bool, *url.URL, error) {
 	parsedURL, err := url.Parse(u)
-	return err == nil && parsedURL.Scheme != "" && parsedURL.Host != ""
+
+	if err != nil {
+		return false, parsedURL, &Error{
+			Message: "could not parse url " + u,
+			Cause:   err,
+		}
+	}
+
+	if parsedURL.Host == "" {
+		return false, parsedURL, &Error{
+			Message: "invalid url host " + u,
+			Cause:   err,
+		}
+	}
+
+	return true, parsedURL, nil
 }
