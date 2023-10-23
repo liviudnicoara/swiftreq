@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -38,6 +38,8 @@ func TestMain(m *testing.M) {
 			mockGetEndpoint(w, r)
 		case "/timeout":
 			mockGetTimeoutEndpoint(w, r)
+		case "/post":
+			mockPostEndpoint(w, r)
 		default:
 			http.NotFoundHandler().ServeHTTP(w, r)
 		}
@@ -74,7 +76,30 @@ func mockGetTimeoutEndpoint(w http.ResponseWriter, r *http.Request) {
 	m["id"] = 1
 	m["name"] = "mock"
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(200 * time.Millisecond)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(sc)
+	json.NewEncoder(w).Encode(m)
+}
+
+func mockPostEndpoint(w http.ResponseWriter, r *http.Request) {
+	body, _ := io.ReadAll(r.Body)
+	defer r.Body.Close()
+
+	var req TestRequest
+	_ = json.Unmarshal(body, &req)
+
+	sc := http.StatusOK
+	m := make(map[string]interface{})
+
+	if req.ID == 0 {
+		sc = http.StatusBadRequest
+		m["error"] = "missing id"
+	} else {
+		m["id"] = req.ID
+		m["name"] = "mock"
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(sc)
@@ -84,13 +109,13 @@ func mockGetTimeoutEndpoint(w http.ResponseWriter, r *http.Request) {
 func Test_Get(t *testing.T) {
 	t.Run("Sucess", func(t *testing.T) {
 		// arrange
-		re := swiftreq.NewRequestExecutor(http.Client{})
-		req := swiftreq.NewRequest[swiftreq.EmptyRequest, TestResponse](re)
-		query := make(url.Values)
-		query.Add("id", "1")
+		query := map[string]string{
+			"id": "1",
+		}
+		req := swiftreq.NewDefaultRequest[TestResponse]().WithQueryParameters(query)
 
 		// act
-		resp, err := req.Get(context.Background(), server.URL, nil, query, nil)
+		resp, err := req.Get(context.Background(), server.URL)
 
 		// assert
 		assert.Equal(t, 1, resp.ID)
@@ -100,12 +125,10 @@ func Test_Get(t *testing.T) {
 
 	t.Run("Error", func(t *testing.T) {
 		// arrange
-		re := swiftreq.NewRequestExecutor(http.Client{})
-		req := swiftreq.NewRequest[swiftreq.EmptyRequest, TestResponse](re)
-		query := make(url.Values)
+		req := swiftreq.NewDefaultRequest[TestResponse]()
 
 		// act
-		resp, err := req.Get(context.Background(), server.URL, nil, query, nil)
+		resp, err := req.Get(context.Background(), server.URL)
 
 		// assert
 		assert.Contains(t, err.Error(), "missing id")
@@ -115,14 +138,48 @@ func Test_Get(t *testing.T) {
 	t.Run("ExecutorTimeout", func(t *testing.T) {
 		// arrange
 		re := swiftreq.NewRequestExecutor(http.Client{Timeout: 100 * time.Millisecond})
-		req := swiftreq.NewRequest[swiftreq.EmptyRequest, TestResponse](re)
-		query := make(url.Values)
+		req := swiftreq.NewRequest[TestResponse](re)
 
 		// act
-		resp, err := req.Get(context.Background(), server.URL+"/timeout", nil, query, nil)
+		resp, err := req.Get(context.Background(), server.URL+"/timeout")
 
 		// assert
 		assert.Contains(t, err.Error(), "deadline exceeded")
+		assert.Nil(t, resp)
+	})
+}
+
+func Test_Post(t *testing.T) {
+	t.Run("Sucess", func(t *testing.T) {
+		// arrange
+		req := swiftreq.NewDefaultRequest[TestResponse]()
+		body := TestRequest{
+			ID:   1,
+			Type: "user",
+		}
+
+		// act
+		resp, err := req.Post(context.Background(), server.URL+"/post", &body)
+
+		// assert
+		assert.Equal(t, 1, resp.ID)
+		assert.Equal(t, "mock", resp.Name)
+		assert.Nil(t, err)
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		// arrange
+		req := swiftreq.NewDefaultRequest[TestResponse]()
+		body := TestRequest{
+			ID:   0,
+			Type: "user",
+		}
+
+		// act
+		resp, err := req.Post(context.Background(), server.URL+"/post", &body)
+
+		// assert
+		assert.Contains(t, err.Error(), "missing id")
 		assert.Nil(t, resp)
 	})
 }

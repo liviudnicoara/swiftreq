@@ -10,6 +10,11 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
+)
+
+var (
+	DefaultRequestExecutor = NewDefaultRequestExecutor()
 )
 
 type Error struct {
@@ -22,8 +27,6 @@ func (e *Error) Error() string {
 	return fmt.Sprintf("message: %s\n cause: %s\n statusCode: %d", e.Message, e.Cause.Error(), e.StatusCode)
 }
 
-type EmptyRequest struct{}
-
 type Response struct {
 	Data       interface{}
 	Success    bool
@@ -35,70 +38,70 @@ type RequestExecutor struct {
 	client http.Client
 }
 
+func NewDefaultRequestExecutor() *RequestExecutor {
+	client := http.Client{Timeout: 30 * time.Second}
+	return NewRequestExecutor(client)
+}
+
 func NewRequestExecutor(client http.Client) *RequestExecutor {
 	return &RequestExecutor{
 		client: client,
 	}
 }
 
-type Request[TReq, TResp any] struct {
-	re *RequestExecutor
+type Request[T any] struct {
+	re              *RequestExecutor
+	headers         map[string]string
+	queryParameters url.Values
 }
 
-func NewRequest[TReq, TResp any](re *RequestExecutor) *Request[TReq, TResp] {
-	return &Request[TReq, TResp]{
+func NewDefaultRequest[T any]() *Request[T] {
+	return NewRequest[T](DefaultRequestExecutor)
+}
+
+func NewRequest[T any](re *RequestExecutor) *Request[T] {
+	return &Request[T]{
 		re: re,
 	}
 }
 
-func (r *Request[TReq, TResp]) Get(
-	ctx context.Context,
-	url string,
-	headers map[string]string,
-	queryParameters url.Values,
-	request *TReq) (*TResp, error) {
-
-	return r.makeHTTPRequest(ctx, url, "GET", headers, queryParameters, request)
+func (r *Request[T]) WithHeaders(headers map[string]string) *Request[T] {
+	r.headers = headers
+	return r
 }
 
-func (r *Request[TReq, TResp]) Post(
-	ctx context.Context,
-	url string,
-	headers map[string]string,
-	queryParameters url.Values,
-	request *TReq) (*TResp, error) {
+func (r *Request[T]) WithQueryParameters(params map[string]string) *Request[T] {
+	if len(params) == 0 {
+		return r
+	}
 
-	return r.makeHTTPRequest(ctx, url, "POST", headers, queryParameters, request)
+	queryParams := url.Values{}
+	for k, v := range params {
+		queryParams.Add(k, v)
+	}
+
+	r.queryParameters = queryParams
+
+	return r
 }
 
-func (r *Request[TReq, TResp]) Put(
-	ctx context.Context,
-	url string,
-	headers map[string]string,
-	queryParameters url.Values,
-	request *TReq) (*TResp, error) {
-
-	return r.makeHTTPRequest(ctx, url, "PUT", headers, queryParameters, request)
+func (r *Request[T]) Get(ctx context.Context, url string) (*T, error) {
+	return r.makeHTTPRequest(ctx, url, "GET", nil)
 }
 
-func (r *Request[TReq, TResp]) Delete(
-	ctx context.Context,
-	url string,
-	headers map[string]string,
-	queryParameters url.Values,
-	request *TReq) (*TResp, error) {
-
-	return r.makeHTTPRequest(ctx, url, "DELETE", headers, queryParameters, request)
+func (r *Request[T]) Post(ctx context.Context, url string, request interface{}) (*T, error) {
+	return r.makeHTTPRequest(ctx, url, "POST", request)
 }
 
-func (r *Request[TReq, TResp]) makeHTTPRequest(
-	ctx context.Context,
-	fullUrl string,
-	httpMethod string,
-	headers map[string]string,
-	queryParameters url.Values,
-	request *TReq) (*TResp, error) {
+func (r *Request[T]) Put(ctx context.Context, url string, request interface{}) (*T, error) {
+	return r.makeHTTPRequest(ctx, url, "PUT", request)
+}
 
+func (r *Request[T]) Delete(ctx context.Context, url string, request interface{}) (*T, error) {
+	return r.makeHTTPRequest(ctx, url, "DELETE", request)
+}
+
+func (r *Request[T]) makeHTTPRequest(ctx context.Context, fullUrl string, httpMethod string, request interface{}) (*T, error) {
 	ok, u, err := isValidURL(fullUrl)
 	if !ok {
 		return nil, err
@@ -108,7 +111,7 @@ func (r *Request[TReq, TResp]) makeHTTPRequest(
 	if httpMethod == "GET" {
 		q := u.Query()
 
-		for k, v := range queryParameters {
+		for k, v := range r.queryParameters {
 			// this depends on the type of api, you may need to do it for each of v
 			q.Set(k, strings.Join(v, ","))
 		}
@@ -143,7 +146,7 @@ func (r *Request[TReq, TResp]) makeHTTPRequest(
 	}
 
 	// for each header passed, add the header value to the request
-	for k, v := range headers {
+	for k, v := range r.headers {
 		req.Header.Set(k, v)
 	}
 
@@ -183,7 +186,7 @@ func (r *Request[TReq, TResp]) makeHTTPRequest(
 		}
 	}
 
-	var responseObject TResp
+	var responseObject T
 	err = json.Unmarshal(responseData, &responseObject)
 
 	if err != nil {
