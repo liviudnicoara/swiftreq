@@ -36,10 +36,18 @@ func TestMain(m *testing.M) {
 		switch strings.TrimSpace(r.URL.Path) {
 		case "/":
 			mockGetEndpoint(w, r)
+		case "/error":
+			mockErrorEndpoint(w, r)
 		case "/timeout":
-			mockGetTimeoutEndpoint(w, r)
+			mockTimeoutEndpoint(w, r)
 		case "/post":
 			mockPostEndpoint(w, r)
+		case "/post/error":
+			mockErrorEndpoint(w, r)
+		case "/put":
+			mockPostEndpoint(w, r)
+		case "/put/error":
+			mockErrorEndpoint(w, r)
 		default:
 			http.NotFoundHandler().ServeHTTP(w, r)
 		}
@@ -49,27 +57,33 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func mockGetEndpoint(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
-
-	sc := http.StatusOK
+func mockErrorEndpoint(w http.ResponseWriter, r *http.Request) {
+	sc := http.StatusBadRequest
 	m := make(map[string]interface{})
 
-	if id == "" {
-		sc = http.StatusBadRequest
-		m["error"] = "missing id"
-	} else {
-		id, _ := strconv.Atoi(id)
-		m["id"] = id
-		m["name"] = "mock"
-	}
+	m["error"] = "custom endpoint error"
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(sc)
 	json.NewEncoder(w).Encode(m)
 }
 
-func mockGetTimeoutEndpoint(w http.ResponseWriter, r *http.Request) {
+func mockGetEndpoint(w http.ResponseWriter, r *http.Request) {
+	idString := r.URL.Query().Get("id")
+
+	sc := http.StatusOK
+	m := make(map[string]interface{})
+
+	id, _ := strconv.Atoi(idString)
+	m["id"] = id
+	m["name"] = "mock"
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(sc)
+	json.NewEncoder(w).Encode(m)
+}
+
+func mockTimeoutEndpoint(w http.ResponseWriter, r *http.Request) {
 	sc := http.StatusOK
 	m := make(map[string]interface{})
 
@@ -93,13 +107,8 @@ func mockPostEndpoint(w http.ResponseWriter, r *http.Request) {
 	sc := http.StatusOK
 	m := make(map[string]interface{})
 
-	if req.ID == 0 {
-		sc = http.StatusBadRequest
-		m["error"] = "missing id"
-	} else {
-		m["id"] = req.ID
-		m["name"] = "mock"
-	}
+	m["id"] = req.ID
+	m["name"] = "mock"
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(sc)
@@ -128,10 +137,10 @@ func Test_Get(t *testing.T) {
 		req := swiftreq.NewDefaultRequest[TestResponse]()
 
 		// act
-		resp, err := req.Get(context.Background(), server.URL)
+		resp, err := req.Get(context.Background(), server.URL+"/error")
 
 		// assert
-		assert.Contains(t, err.Error(), "missing id")
+		assert.Contains(t, err.Error(), "custom endpoint error")
 		assert.Nil(t, resp)
 	})
 
@@ -169,17 +178,50 @@ func Test_Post(t *testing.T) {
 
 	t.Run("Error", func(t *testing.T) {
 		// arrange
-		req := swiftreq.NewDefaultRequest[TestResponse]()
 		body := TestRequest{
 			ID:   0,
 			Type: "user",
 		}
 
 		// act
-		resp, err := req.Post(context.Background(), server.URL+"/post", &body)
+		resp, err := swiftreq.NewDefaultRequest[TestResponse]().Post(context.Background(), server.URL+"/post/error", &body)
 
 		// assert
-		assert.Contains(t, err.Error(), "missing id")
+		assert.Contains(t, err.Error(), "custom endpoint error")
+		assert.Nil(t, resp)
+	})
+}
+
+func Test_Put(t *testing.T) {
+	t.Run("Sucess", func(t *testing.T) {
+		// arrange
+		req := swiftreq.NewDefaultRequest[TestResponse]()
+		body := TestRequest{
+			ID:   1,
+			Type: "user",
+		}
+
+		// act
+		resp, err := req.Put(context.Background(), server.URL+"/put", &body)
+
+		// assert
+		assert.Equal(t, 1, resp.ID)
+		assert.Equal(t, "mock", resp.Name)
+		assert.Nil(t, err)
+	})
+
+	t.Run("Error", func(t *testing.T) {
+		// arrange
+		body := TestRequest{
+			ID:   0,
+			Type: "user",
+		}
+
+		// act
+		resp, err := swiftreq.NewDefaultRequest[TestResponse]().Put(context.Background(), server.URL+"/put/error", &body)
+
+		// assert
+		assert.Contains(t, err.Error(), "custom endpoint error")
 		assert.Nil(t, resp)
 	})
 }
