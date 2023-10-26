@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/liviudnicoara/swiftreq/middlewares"
 )
 
 var (
@@ -35,7 +37,9 @@ type Response struct {
 }
 
 type RequestExecutor struct {
-	client http.Client
+	client      http.Client
+	middlewares []middlewares.Middleware
+	pipeline    middlewares.Handler
 }
 
 func NewDefaultRequestExecutor() *RequestExecutor {
@@ -44,15 +48,66 @@ func NewDefaultRequestExecutor() *RequestExecutor {
 }
 
 func NewRequestExecutor(client http.Client) *RequestExecutor {
-	return &RequestExecutor{
+	re := &RequestExecutor{
 		client: client,
 	}
+
+	re.WithMiddlewares(middlewares.LogMiddleware(), middlewares.PerformanceMiddleware(1*time.Second))
+
+	return re
+}
+
+func (re *RequestExecutor) WithTimeout(timeout time.Duration) *RequestExecutor {
+	re.client.Timeout = timeout
+	return re
+}
+
+func (re *RequestExecutor) WithMiddleware(handler middlewares.Middleware) *RequestExecutor {
+	re.middlewares = append(re.middlewares, handler)
+	re.pipeline = func(req *http.Request) (*http.Response, error) {
+		return re.client.Do(req)
+	}
+
+	for _, h := range re.middlewares {
+		re.pipeline = h(re.pipeline)
+	}
+
+	return re
+}
+
+func (re *RequestExecutor) WithMiddlewares(handlers ...middlewares.Middleware) *RequestExecutor {
+	re.middlewares = append(re.middlewares, handlers...)
+	re.pipeline = func(req *http.Request) (*http.Response, error) {
+		fmt.Println("Called", req.URL)
+		return re.client.Do(req)
+	}
+
+	for _, h := range re.middlewares {
+		re.pipeline = h(re.pipeline)
+	}
+	return re
 }
 
 type Request[T any] struct {
 	re              *RequestExecutor
 	headers         map[string]string
+	httpMethod      string
 	queryParameters url.Values
+}
+
+func NewGetRequest[T any]() *Request[T] {
+	return NewDefaultRequest[T]().WithMethod("GET")
+}
+
+func NewPostRequest[T any]() *Request[T] {
+	return NewDefaultRequest[T]().WithMethod("POST")
+}
+func NewPutRequest[T any]() *Request[T] {
+	return NewDefaultRequest[T]().WithMethod("PUT")
+}
+
+func NewDeleteRequest[T any]() *Request[T] {
+	return NewDefaultRequest[T]().WithMethod("DELETE")
 }
 
 func NewDefaultRequest[T any]() *Request[T] {
@@ -63,6 +118,16 @@ func NewRequest[T any](re *RequestExecutor) *Request[T] {
 	return &Request[T]{
 		re: re,
 	}
+}
+
+func (r *Request[T]) WithMethod(httpMethod string) *Request[T] {
+	r.httpMethod = httpMethod
+	return r
+}
+
+func (r *Request[T]) WithRequestExecutor(re *RequestExecutor) *Request[T] {
+	r.re = re
+	return r
 }
 
 func (r *Request[T]) WithHeaders(headers map[string]string) *Request[T] {
@@ -89,19 +154,19 @@ func (r *Request[T]) Get(ctx context.Context, url string) (*T, error) {
 	return r.makeHTTPRequest(ctx, url, "GET", nil)
 }
 
-func (r *Request[T]) Post(ctx context.Context, url string, request interface{}) (*T, error) {
-	return r.makeHTTPRequest(ctx, url, "POST", request)
+func (r *Request[T]) Post(ctx context.Context, url string, payload interface{}) (*T, error) {
+	return r.makeHTTPRequest(ctx, url, "POST", payload)
 }
 
-func (r *Request[T]) Put(ctx context.Context, url string, request interface{}) (*T, error) {
-	return r.makeHTTPRequest(ctx, url, "PUT", request)
+func (r *Request[T]) Put(ctx context.Context, url string, payload interface{}) (*T, error) {
+	return r.makeHTTPRequest(ctx, url, "PUT", payload)
 }
 
-func (r *Request[T]) Delete(ctx context.Context, url string, request interface{}) (*T, error) {
-	return r.makeHTTPRequest(ctx, url, "DELETE", request)
+func (r *Request[T]) Delete(ctx context.Context, url string, payload interface{}) (*T, error) {
+	return r.makeHTTPRequest(ctx, url, "DELETE", payload)
 }
 
-func (r *Request[T]) makeHTTPRequest(ctx context.Context, fullUrl string, httpMethod string, request interface{}) (*T, error) {
+func (r *Request[T]) makeHTTPRequest(ctx context.Context, fullUrl string, httpMethod string, payload interface{}) (*T, error) {
 	ok, u, err := isValidURL(fullUrl)
 	if !ok {
 		return nil, err
@@ -120,10 +185,10 @@ func (r *Request[T]) makeHTTPRequest(ctx context.Context, fullUrl string, httpMe
 	}
 
 	// regardless of GET or POST, we can safely add the body
-	body, err := json.Marshal(request)
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, &Error{
-			Message: fmt.Sprintf("could not marshal body for request %s. Body:\n %+v", fullUrl, request),
+			Message: fmt.Sprintf("could not marshal body for request %s. Body:\n %+v", fullUrl, payload),
 			Cause:   err,
 		}
 	}
@@ -132,7 +197,7 @@ func (r *Request[T]) makeHTTPRequest(ctx context.Context, fullUrl string, httpMe
 
 	if err != nil {
 		return nil, &Error{
-			Message: fmt.Sprintf("could not create body buffer for request %s. Body:\n %+v", fullUrl, request),
+			Message: fmt.Sprintf("could not create body buffer for request %s. Body:\n %+v", fullUrl, payload),
 			Cause:   err,
 		}
 	}
@@ -154,7 +219,8 @@ func (r *Request[T]) makeHTTPRequest(ctx context.Context, fullUrl string, httpMe
 	log.Printf("%s %s\n", httpMethod, req.URL.String())
 
 	// finally, do the request
-	res, err := r.re.client.Do(req)
+	res, err := r.re.pipeline(req)
+	// res, err := r.re.client.Do(req)
 	if err != nil {
 		return nil, &Error{
 			Message: "failed to make request " + fullUrl,
