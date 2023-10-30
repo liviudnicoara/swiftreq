@@ -1,12 +1,12 @@
 package middlewares
 
 import (
-	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 )
 
-func PerformanceMiddleware(threshold time.Duration) Middleware {
+func PerformanceMiddleware(threshold time.Duration, logger slog.Logger) Middleware {
 	return func(next Handler) Handler {
 		return func(req *http.Request) (*http.Response, error) {
 			start := time.Now()
@@ -16,7 +16,7 @@ func PerformanceMiddleware(threshold time.Duration) Middleware {
 			elapsed := time.Since(start)
 
 			if elapsed > threshold {
-				fmt.Println("request lasted", elapsed)
+				logger.Warn("Slow request", "URL", req.URL, "Elapsed", elapsed)
 			}
 
 			return resp, err

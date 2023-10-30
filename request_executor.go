@@ -1,7 +1,7 @@
 package swiftreq
 
 import (
-	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -28,7 +28,7 @@ func NewRequestExecutor(client http.Client) *RequestExecutor {
 		client: client,
 	}
 
-	re.WithMiddlewares(middlewares.LogMiddleware(), middlewares.PerformanceMiddleware(1*time.Second))
+	re.WithMiddlewares(middlewares.LoggerMiddleware(*slog.Default()), middlewares.PerformanceMiddleware(1*time.Second, *slog.Default()))
 
 	return re
 }
@@ -54,7 +54,6 @@ func (re *RequestExecutor) WithMiddleware(handler middlewares.Middleware) *Reque
 func (re *RequestExecutor) WithMiddlewares(handlers ...middlewares.Middleware) *RequestExecutor {
 	re.middlewares = append(re.middlewares, handlers...)
 	re.pipeline = func(req *http.Request) (*http.Response, error) {
-		fmt.Println("Called", req.URL)
 		return re.client.Do(req)
 	}
 

@@ -1,17 +1,20 @@
 package middlewares
 
 import (
-	"fmt"
+	"log/slog"
 	"net/http"
 )
 
-func LogMiddleware() Middleware {
+func LoggerMiddleware(logger slog.Logger) Middleware {
 	return func(next Handler) Handler {
 		return func(r *http.Request) (*http.Response, error) {
-			fmt.Println("performing req", r.URL)
+			logger.Info("Received request", "URL", r.URL)
 
 			response, err := next(r)
-			fmt.Println("ended req", r.URL)
+
+			if err != nil {
+				logger.Error("Error on request", "URL", r.URL, "Error", err.Error())
+			}
 
 			return response, err
 		}
