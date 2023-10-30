@@ -8,7 +8,7 @@ import (
 func LoggerMiddleware(logger slog.Logger) Middleware {
 	return func(next Handler) Handler {
 		return func(r *http.Request) (*http.Response, error) {
-			logger.Info("Received request", "URL", r.URL)
+			logger.Info("Executing request", "URL", r.URL, "Method", r.Method)
 
 			response, err := next(r)
 

@@ -22,7 +22,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Failed to GET", err)
 	} else {
-		fmt.Printf("\nGET Response: \n %+v", (*posts)[0])
+		fmt.Printf("\nGET Response: %+v\n", (*posts)[0])
 	}
 
 	post := Post{
@@ -36,7 +36,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Failed to POST", err)
 	} else {
-		fmt.Printf("\nPOST Response:\n %+v", *resp)
+		fmt.Printf("\nPOST Response: %+v\n", *resp)
 	}
 
 	// PUT request
@@ -44,7 +44,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Failed to PUT", err)
 	} else {
-		fmt.Printf("\nPUT Response:\n  %+v", *resp)
+		fmt.Printf("\nPUT Response:  %+v\n", *resp)
 	}
 
 	// DELETE request
@@ -52,7 +52,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Failed to DELETE", err)
 	} else {
-		fmt.Printf("\nDELETE Response:\n %+v", *resp)
+		fmt.Printf("\nDELETE Response: %+v\n", *resp)
 	}
 
 }

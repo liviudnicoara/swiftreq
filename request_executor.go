@@ -28,7 +28,7 @@ func NewRequestExecutor(client http.Client) *RequestExecutor {
 		client: client,
 	}
 
-	re.WithMiddlewares(middlewares.LoggerMiddleware(*slog.Default()), middlewares.PerformanceMiddleware(1*time.Second, *slog.Default()))
+	re.pipeline = re.do()
 
 	return re
 }
@@ -40,9 +40,7 @@ func (re *RequestExecutor) WithTimeout(timeout time.Duration) *RequestExecutor {
 
 func (re *RequestExecutor) WithMiddleware(handler middlewares.Middleware) *RequestExecutor {
 	re.middlewares = append(re.middlewares, handler)
-	re.pipeline = func(req *http.Request) (*http.Response, error) {
-		return re.client.Do(req)
-	}
+	re.pipeline = re.do()
 
 	for _, h := range re.middlewares {
 		re.pipeline = h(re.pipeline)
@@ -53,12 +51,26 @@ func (re *RequestExecutor) WithMiddleware(handler middlewares.Middleware) *Reque
 
 func (re *RequestExecutor) WithMiddlewares(handlers ...middlewares.Middleware) *RequestExecutor {
 	re.middlewares = append(re.middlewares, handlers...)
-	re.pipeline = func(req *http.Request) (*http.Response, error) {
-		return re.client.Do(req)
-	}
+	re.pipeline = re.do()
 
 	for _, h := range re.middlewares {
 		re.pipeline = h(re.pipeline)
 	}
 	return re
+}
+
+func (re *RequestExecutor) AddLogging(logger slog.Logger) *RequestExecutor {
+	re.middlewares = append(re.middlewares, middlewares.LoggerMiddleware(logger))
+	return re
+}
+
+func (re *RequestExecutor) AddPerformanceMonitor(threshold time.Duration, logger slog.Logger) *RequestExecutor {
+	re.middlewares = append(re.middlewares, middlewares.PerformanceMiddleware(threshold, logger))
+	return re
+}
+
+func (re *RequestExecutor) do() func(req *http.Request) (*http.Response, error) {
+	return func(req *http.Request) (*http.Response, error) {
+		return re.client.Do(req)
+	}
 }
