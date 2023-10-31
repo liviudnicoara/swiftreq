@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/liviudnicoara/swiftreq/middlewares"
+	"github.com/patrickmn/go-cache"
 )
 
 var (
@@ -13,9 +14,10 @@ var (
 )
 
 type RequestExecutor struct {
-	client      http.Client
-	middlewares []middlewares.Middleware
-	pipeline    middlewares.Handler
+	client       http.Client
+	middlewares  []middlewares.Middleware
+	pipeline     middlewares.Handler
+	cacheEnabled bool
 }
 
 func NewDefaultRequestExecutor() *RequestExecutor {
@@ -66,6 +68,19 @@ func (re *RequestExecutor) AddLogging(logger slog.Logger) *RequestExecutor {
 
 func (re *RequestExecutor) AddPerformanceMonitor(threshold time.Duration, logger slog.Logger) *RequestExecutor {
 	re.middlewares = append(re.middlewares, middlewares.PerformanceMiddleware(threshold, logger))
+	return re
+}
+
+func (re *RequestExecutor) AddCaching(ttl time.Duration) *RequestExecutor {
+	if re.cacheEnabled {
+		return re
+	}
+
+	c := cache.New(ttl, 2*ttl)
+
+	re.WithMiddleware(middlewares.CachingMiddleware(c, ttl))
+	re.cacheEnabled = true
+
 	return re
 }
 
