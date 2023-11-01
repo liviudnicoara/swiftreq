@@ -10,6 +10,9 @@ import (
 )
 
 var (
+	defaultMinWaitRetry = 1 * time.Second
+	defaultMaxWaitRetry = 1 * time.Second
+
 	DefaultRequestExecutor = NewDefaultRequestExecutor()
 )
 
@@ -18,6 +21,10 @@ type RequestExecutor struct {
 	middlewares  []middlewares.Middleware
 	pipeline     middlewares.Handler
 	cacheEnabled bool
+	retryEnabled bool
+
+	MinWaitRetry time.Duration
+	MaxWaitRetry time.Duration
 }
 
 func NewDefaultRequestExecutor() *RequestExecutor {
@@ -28,6 +35,9 @@ func NewDefaultRequestExecutor() *RequestExecutor {
 func NewRequestExecutor(client http.Client) *RequestExecutor {
 	re := &RequestExecutor{
 		client: client,
+
+		MinWaitRetry: defaultMinWaitRetry,
+		MaxWaitRetry: defaultMaxWaitRetry,
 	}
 
 	re.pipeline = re.do()
@@ -80,6 +90,42 @@ func (re *RequestExecutor) AddCaching(ttl time.Duration) *RequestExecutor {
 
 	re.WithMiddleware(middlewares.CachingMiddleware(c, ttl))
 	re.cacheEnabled = true
+
+	return re
+}
+
+func (re *RequestExecutor) WithExponentialRetry(retry int) *RequestExecutor {
+	if re.retryEnabled {
+		return re
+	}
+
+	rh := middlewares.RetryHandler{
+		MinWait:    re.MinWaitRetry,
+		MaxWait:    re.MaxWaitRetry,
+		RetryCount: retry,
+		Backoff:    middlewares.ExponentialBackoffTime,
+	}
+
+	re.WithMiddleware(middlewares.RetryMiddleware(rh))
+	re.retryEnabled = true
+
+	return re
+}
+
+func (re *RequestExecutor) WithLiniarRetry(retry int) *RequestExecutor {
+	if re.retryEnabled {
+		return re
+	}
+
+	rh := middlewares.RetryHandler{
+		MinWait:    re.MinWaitRetry,
+		MaxWait:    re.MaxWaitRetry,
+		RetryCount: retry,
+		Backoff:    middlewares.LinearJitterBackoffTime,
+	}
+
+	re.WithMiddleware(middlewares.RetryMiddleware(rh))
+	re.retryEnabled = true
 
 	return re
 }
