@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -156,7 +157,6 @@ func (r *Request[T]) Do(ctx context.Context) (*T, error) {
 
 	// finally, do the request
 	res, err := r.re.pipeline(req)
-	// res, err := r.re.client.Do(req)
 	if err != nil {
 		return nil, &Error{
 			Message: "failed to make request " + r.url,
@@ -189,13 +189,45 @@ func (r *Request[T]) Do(ctx context.Context) (*T, error) {
 	}
 
 	var responseObject T
-	err = json.Unmarshal(responseData, &responseObject)
+	if res.Header.Get("Content-Type") == "application/json" {
+		err = json.Unmarshal(responseData, &responseObject)
 
-	if err != nil {
-		return nil, &Error{
-			Message:    "error unmarshaling response for request " + r.url,
-			Cause:      err,
-			StatusCode: res.StatusCode,
+		if err != nil {
+			return nil, &Error{
+				Message:    "error unmarshaling response for request " + r.url,
+				Cause:      err,
+				StatusCode: res.StatusCode,
+			}
+		}
+	} else {
+		dataAsString := string(responseData)
+		var parseErr error
+		switch any(responseObject).(type) {
+		case string:
+			responseObject = any(dataAsString).(T)
+
+		case int:
+			data, err := strconv.Atoi(dataAsString)
+			responseObject = any(data).(T)
+			parseErr = err
+		case float64:
+			data, err := strconv.ParseFloat(dataAsString, 64)
+			responseObject = any(data).(T)
+			parseErr = err
+		case float32:
+			data, err := strconv.ParseFloat(dataAsString, 32)
+			responseObject = any(data).(T)
+			parseErr = err
+		default:
+			parseErr = fmt.Errorf("unssuported  conversion type: %T", responseObject)
+		}
+
+		if parseErr != nil {
+			return nil, &Error{
+				Message:    "error converting response for request " + r.url,
+				Cause:      parseErr,
+				StatusCode: res.StatusCode,
+			}
 		}
 	}
 
