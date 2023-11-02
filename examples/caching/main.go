@@ -19,8 +19,8 @@ type Post struct {
 
 func main() {
 	// Create custom rest executor
-	re := swiftreq.NewDefaultRequestExecutor(). // default executor with 30s timeout
-							AddCaching(100 * time.Millisecond)
+	re := swiftreq.Default(). // default executor with 30s timeout
+					AddCaching(100 * time.Millisecond)
 
 	// GET request
 	req := swiftreq.NewGetRequest[Post](BASE_URL + "/posts/1").

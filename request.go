@@ -48,7 +48,7 @@ func NewDeleteRequest[T any](url string) *Request[T] {
 }
 
 func NewDefaultRequest[T any]() *Request[T] {
-	return NewRequest[T](DefaultRequestExecutor)
+	return NewRequest[T](Default())
 }
 
 func NewRequest[T any](re *RequestExecutor) *Request[T] {

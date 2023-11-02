@@ -3,6 +3,7 @@ package swiftreq
 import (
 	"log/slog"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/liviudnicoara/swiftreq/middlewares"
@@ -13,8 +14,20 @@ var (
 	defaultMinWaitRetry = 1 * time.Second
 	defaultMaxWaitRetry = 1 * time.Second
 
-	DefaultRequestExecutor = NewDefaultRequestExecutor()
+	defaultRequestExecutor atomic.Value
 )
+
+func init() {
+	defaultRequestExecutor.Store(newDefaultRequestExecutor())
+}
+
+// Default returns the default RequestExecutor.
+func Default() *RequestExecutor { return defaultRequestExecutor.Load().(*RequestExecutor) }
+
+// SetDefault makes re the default RequestExecutor.
+func SetDefault(re *RequestExecutor) {
+	defaultRequestExecutor.Store(re)
+}
 
 type RequestExecutor struct {
 	client       http.Client
@@ -30,7 +43,7 @@ type RequestExecutor struct {
 	Logger *slog.Logger
 }
 
-func NewDefaultRequestExecutor() *RequestExecutor {
+func newDefaultRequestExecutor() *RequestExecutor {
 	client := http.Client{Timeout: 30 * time.Second}
 	return NewRequestExecutor(client)
 }
