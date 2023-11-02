@@ -22,9 +22,12 @@ type RequestExecutor struct {
 	pipeline     middlewares.Handler
 	cacheEnabled bool
 	retryEnabled bool
+	authEnabled  bool
 
 	MinWaitRetry time.Duration
 	MaxWaitRetry time.Duration
+
+	Logger *slog.Logger
 }
 
 func NewDefaultRequestExecutor() *RequestExecutor {
@@ -38,6 +41,7 @@ func NewRequestExecutor(client http.Client) *RequestExecutor {
 
 		MinWaitRetry: defaultMinWaitRetry,
 		MaxWaitRetry: defaultMaxWaitRetry,
+		Logger:       slog.Default(),
 	}
 
 	re.pipeline = re.do()
@@ -71,12 +75,14 @@ func (re *RequestExecutor) WithMiddlewares(handlers ...middlewares.Middleware) *
 	return re
 }
 
-func (re *RequestExecutor) AddLogging(logger slog.Logger) *RequestExecutor {
+func (re *RequestExecutor) AddLogging(logger *slog.Logger) *RequestExecutor {
+	re.Logger = logger
 	re.middlewares = append(re.middlewares, middlewares.LoggerMiddleware(logger))
 	return re
 }
 
-func (re *RequestExecutor) AddPerformanceMonitor(threshold time.Duration, logger slog.Logger) *RequestExecutor {
+func (re *RequestExecutor) AddPerformanceMonitor(threshold time.Duration, logger *slog.Logger) *RequestExecutor {
+	re.Logger = logger
 	re.middlewares = append(re.middlewares, middlewares.PerformanceMiddleware(threshold, logger))
 	return re
 }
@@ -125,6 +131,19 @@ func (re *RequestExecutor) WithLiniarRetry(retry int) *RequestExecutor {
 	}
 
 	re.WithMiddleware(middlewares.RetryMiddleware(rh))
+	re.retryEnabled = true
+
+	return re
+}
+
+func (re *RequestExecutor) WithAuthorization(schema string, authorize middlewares.AuthorizeFunc) *RequestExecutor {
+	if re.authEnabled {
+		return re
+	}
+
+	tr := middlewares.NewTokenRefresher(schema, authorize, re.Logger)
+
+	re.WithMiddleware(middlewares.AuthorizeMiddleware(tr))
 	re.retryEnabled = true
 
 	return re
