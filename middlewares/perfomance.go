@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func PerformanceMiddleware(threshold time.Duration, logger slog.Logger) Middleware {
+func PerformanceMiddleware(threshold time.Duration, logger *slog.Logger) Middleware {
 	return func(next Handler) Handler {
 		return func(req *http.Request) (*http.Response, error) {
 			start := time.Now()
