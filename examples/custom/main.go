@@ -21,8 +21,8 @@ type Post struct {
 func main() {
 	// Create custom rest executor
 	re := swiftreq.NewDefaultRequestExecutor(). // default executor with 30s timeout
-							AddLogging(*slog.Default()).                                // add logger
-							AddPerformanceMonitor(10*time.Millisecond, *slog.Default()) // add performance monitor
+							AddLogging(slog.Default()).                                // add logger
+							AddPerformanceMonitor(10*time.Millisecond, slog.Default()) // add performance monitor
 
 	// GET request
 	post, err := swiftreq.NewRequest[Post](re).
