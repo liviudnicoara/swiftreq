@@ -22,36 +22,36 @@ type Request[T any] struct {
 	queryParameters url.Values
 }
 
-func NewGetRequest[T any](url string) *Request[T] {
-	return NewDefaultRequest[T]().
+func Get[T any](url string) *Request[T] {
+	return newDefaultRequest[T]().
 		WithMethod("GET").
 		WithURL(url)
 }
 
-func NewPostRequest[T any](url string, payload interface{}) *Request[T] {
-	return NewDefaultRequest[T]().
+func Post[T any](url string, payload interface{}) *Request[T] {
+	return newDefaultRequest[T]().
 		WithMethod("POST").
 		WithURL(url).
 		WithPayload(payload)
 }
-func NewPutRequest[T any](url string, payload interface{}) *Request[T] {
-	return NewDefaultRequest[T]().
+func Put[T any](url string, payload interface{}) *Request[T] {
+	return newDefaultRequest[T]().
 		WithMethod("PUT").
 		WithURL(url).
 		WithPayload(payload)
 }
 
-func NewDeleteRequest[T any](url string) *Request[T] {
-	return NewDefaultRequest[T]().
+func Delete[T any](url string) *Request[T] {
+	return newDefaultRequest[T]().
 		WithMethod("DELETE").
 		WithURL(url)
 }
 
-func NewDefaultRequest[T any]() *Request[T] {
-	return NewRequest[T](Default())
+func newDefaultRequest[T any]() *Request[T] {
+	return newRequest[T](Default())
 }
 
-func NewRequest[T any](re *RequestExecutor) *Request[T] {
+func newRequest[T any](re *RequestExecutor) *Request[T] {
 	return &Request[T]{
 		re: re,
 		headers: map[string]string{

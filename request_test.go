@@ -121,7 +121,7 @@ func Test_Get(t *testing.T) {
 		query := map[string]string{
 			"id": "1",
 		}
-		req := swiftreq.NewGetRequest[TestResponse](server.URL).WithQueryParameters(query)
+		req := swiftreq.Get[TestResponse](server.URL).WithQueryParameters(query)
 
 		// act
 		resp, err := req.Do(context.Background())
@@ -134,7 +134,7 @@ func Test_Get(t *testing.T) {
 
 	t.Run("Error", func(t *testing.T) {
 		// arrange
-		req := swiftreq.NewGetRequest[TestResponse](server.URL + "/error")
+		req := swiftreq.Get[TestResponse](server.URL + "/error")
 
 		// act
 		resp, err := req.Do(context.Background())
@@ -147,7 +147,7 @@ func Test_Get(t *testing.T) {
 	t.Run("ExecutorTimeout", func(t *testing.T) {
 		// arrange
 		re := swiftreq.NewRequestExecutor(http.Client{Timeout: 100 * time.Millisecond})
-		req := swiftreq.NewRequest[TestResponse](re).WithMethod("GET").WithURL(server.URL + "/timeout")
+		req := swiftreq.Get[TestResponse](server.URL + "/timeout").WithRequestExecutor(re)
 
 		// act
 		resp, err := req.Do(context.Background())
@@ -165,7 +165,7 @@ func Test_Post(t *testing.T) {
 			ID:   1,
 			Type: "user",
 		}
-		req := swiftreq.NewPostRequest[TestResponse](server.URL+"/post", &body)
+		req := swiftreq.Post[TestResponse](server.URL+"/post", &body)
 
 		// act
 		resp, err := req.Do(context.Background())
@@ -184,7 +184,7 @@ func Test_Post(t *testing.T) {
 		}
 
 		// act
-		resp, err := swiftreq.NewPostRequest[TestResponse](server.URL+"/post/error", &body).Do(context.Background())
+		resp, err := swiftreq.Post[TestResponse](server.URL+"/post/error", &body).Do(context.Background())
 
 		// assert
 		assert.Contains(t, err.Error(), "custom endpoint error")
@@ -199,7 +199,7 @@ func Test_Put(t *testing.T) {
 			ID:   1,
 			Type: "user",
 		}
-		req := swiftreq.NewPutRequest[TestResponse](server.URL+"/put", &body)
+		req := swiftreq.Put[TestResponse](server.URL+"/put", &body)
 
 		// act
 		resp, err := req.Do(context.Background())
@@ -218,7 +218,7 @@ func Test_Put(t *testing.T) {
 		}
 
 		// act
-		resp, err := swiftreq.NewPutRequest[TestResponse](server.URL+"/put/error", &body).Do(context.Background())
+		resp, err := swiftreq.Put[TestResponse](server.URL+"/put/error", &body).Do(context.Background())
 
 		// assert
 		assert.Contains(t, err.Error(), "custom endpoint error")

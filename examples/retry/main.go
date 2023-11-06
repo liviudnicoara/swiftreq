@@ -66,7 +66,7 @@ func main() {
 		}
 	}()
 
-	resp, err := swiftreq.NewGetRequest[string]("http://localhost:3000/retry").
+	resp, err := swiftreq.Get[string]("http://localhost:3000/retry").
 		WithRequestExecutor(swiftreq.Default().
 			WithExponentialRetry(5)).
 		Do(context.Background())

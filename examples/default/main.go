@@ -18,7 +18,7 @@ type Post struct {
 
 func main() {
 	// GET request
-	posts, err := swiftreq.NewGetRequest[[]Post](BASE_URL + "/posts").Do(context.Background())
+	posts, err := swiftreq.Get[[]Post](BASE_URL + "/posts").Do(context.Background())
 	if err != nil {
 		fmt.Println("Failed to GET", err)
 	} else {
@@ -32,7 +32,7 @@ func main() {
 	}
 
 	// POST request
-	resp, err := swiftreq.NewPostRequest[Post](BASE_URL+"/posts", post).Do(context.Background())
+	resp, err := swiftreq.Post[Post](BASE_URL+"/posts", post).Do(context.Background())
 	if err != nil {
 		fmt.Println("Failed to POST", err)
 	} else {
@@ -40,7 +40,7 @@ func main() {
 	}
 
 	// PUT request
-	resp, err = swiftreq.NewPutRequest[Post](BASE_URL+"/posts/1", post).Do(context.Background())
+	resp, err = swiftreq.Put[Post](BASE_URL+"/posts/1", post).Do(context.Background())
 	if err != nil {
 		fmt.Println("Failed to PUT", err)
 	} else {
@@ -48,7 +48,7 @@ func main() {
 	}
 
 	// DELETE request
-	resp, err = swiftreq.NewDeleteRequest[Post](BASE_URL + "/posts/1").Do(context.Background())
+	resp, err = swiftreq.Delete[Post](BASE_URL + "/posts/1").Do(context.Background())
 	if err != nil {
 		fmt.Println("Failed to DELETE", err)
 	} else {

@@ -25,9 +25,8 @@ func main() {
 					AddPerformanceMonitor(10*time.Millisecond, slog.Default()) // add performance monitor
 
 	// GET request
-	post, err := swiftreq.NewRequest[Post](re).
-		WithURL(BASE_URL + "/posts/1").
-		WithMethod("GET").
+	post, err := swiftreq.Get[Post](BASE_URL + "/posts/1").
+		WithRequestExecutor(re).
 		WithQueryParameters(map[string]string{"page": "1"}).
 		WithHeaders(map[string]string{"Content-Type": "application/json"}).
 		Do(context.Background())

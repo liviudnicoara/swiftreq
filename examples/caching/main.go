@@ -23,7 +23,7 @@ func main() {
 					AddCaching(100 * time.Millisecond)
 
 	// GET request
-	req := swiftreq.NewGetRequest[Post](BASE_URL + "/posts/1").
+	req := swiftreq.Get[Post](BASE_URL + "/posts/1").
 		WithRequestExecutor(re).
 		WithQueryParameters(map[string]string{"page": "1"})
 

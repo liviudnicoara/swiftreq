@@ -41,7 +41,10 @@ func NewTokenRefresher(schema string, fn AuthorizeFunc, logger *slog.Logger) *To
 }
 
 func (tr *TokenRefresher) RefreshToken() {
+	started := make(chan struct{})
+
 	go func() {
+
 		var err error
 		var token string
 		var lifeSpan time.Duration
@@ -50,6 +53,8 @@ func (tr *TokenRefresher) RefreshToken() {
 		if err != nil {
 			tr.logger.Error("Could not retrieve access token", err)
 		}
+
+		<-started
 
 		for {
 			select {
@@ -64,6 +69,9 @@ func (tr *TokenRefresher) RefreshToken() {
 
 		}
 	}()
+
+	started <- struct{}{}
+	close(started)
 }
 
 func (tr *TokenRefresher) Get() (string, error) {
