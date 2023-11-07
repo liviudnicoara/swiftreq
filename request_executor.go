@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	defaultMinWaitRetry = 1 * time.Second
-	defaultMaxWaitRetry = 1 * time.Second
+	defaultMinWaitRetry = 500 * time.Millisecond
+	defaultMaxWaitRetry = 10 * time.Second
 
 	defaultRequestExecutor atomic.Value
 )
