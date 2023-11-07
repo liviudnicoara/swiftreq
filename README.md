@@ -90,7 +90,7 @@ Logging and performance monitor
 
     // Requests will be logged. 
     // If response time is over 10 ms, a warning will be logged.
-	post, err := swiftreq.Get[Post](BASE_URL + "/posts/1").
+    post, err := swiftreq.Get[Post](BASE_URL + "/posts/1").
 		Do(context.Background())
 
 ```
@@ -108,7 +108,7 @@ Authentication
                 Do(context.Background())
 
             return resp.Token resp.LifeSpan, resp.Error
-	    })
+        })
 
 
 	resp, err := swiftreq.Get[string]("http://localhost:3000/page").
