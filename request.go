@@ -189,7 +189,8 @@ func (r *Request[T]) Do(ctx context.Context) (*T, error) {
 	}
 
 	var responseObject T
-	if res.Header.Get("Content-Type") == "application/json" {
+	contentType := res.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/json") || contentType == "" {
 		err = json.Unmarshal(responseData, &responseObject)
 
 		if err != nil {
@@ -219,7 +220,7 @@ func (r *Request[T]) Do(ctx context.Context) (*T, error) {
 			responseObject = any(data).(T)
 			parseErr = err
 		default:
-			parseErr = fmt.Errorf("unssuported  conversion type: %T", responseObject)
+			parseErr = fmt.Errorf("unssuported conversion type: %T", responseObject)
 		}
 
 		if parseErr != nil {
