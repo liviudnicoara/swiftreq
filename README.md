@@ -6,12 +6,11 @@ SwiftReq is a Golang library designed to simplify HTTP requests in your services
 
 ## Features
 
-- **Generics:** Seamless response handling.
-- **Retry:** Automatic retries with backoff options.
-- **Logging:** Easily log requests.
-- **Performance Monitor:** Log responses over a set threshold.
-- **Authentication:** Automatic token handling.
-
+- **Generics:** Utilize generics for seamless HTTP response handling.
+- **Retry:** Enable automatic retries with options for exponential or linear jitter backoff.
+- **Logging:** Easily log all requests for better visibility.
+- **Performance Monitor:** Monitor and log responses exceeding defined thresholds.
+- **Authentication:** utomatically include access tokens and refresh them in the background.
 
 ## Getting Started
 
@@ -19,3 +18,6 @@ SwiftReq is a Golang library designed to simplify HTTP requests in your services
 
 ```shell
 go get -u github.com/liviudnicoara/swiftreq
+```
+
+### Usage
