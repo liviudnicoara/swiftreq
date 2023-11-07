@@ -27,17 +27,17 @@ Making simple requests
 
 ```go
 
-    // GET request
-    posts, err := swiftreq.Get[[]Post](BASE_URL + "/posts").Do(context.Background())
-	
-	// POST request
-	resp, err := swiftreq.Post[Post](BASE_URL+"/posts", post).Do(context.Background())
-	
-	// PUT request
-	resp, err = swiftreq.Put[Post](BASE_URL+"/posts/1", post).Do(context.Background())
-	
-	// DELETE request
-	resp, err = swiftreq.Delete[Post](BASE_URL + "/posts/1").Do(context.Background())
+// GET request
+posts, err := swiftreq.Get[[]Post](BASE_URL + "/posts").Do(context.Background())
+
+// POST request
+resp, err := swiftreq.Post[Post](BASE_URL+"/posts", post).Do(context.Background())
+
+// PUT request
+resp, err = swiftreq.Put[Post](BASE_URL+"/posts/1", post).Do(context.Background())
+
+// DELETE request
+resp, err = swiftreq.Delete[Post](BASE_URL + "/posts/1").Do(context.Background())
 	
 ```
 
@@ -45,10 +45,10 @@ Making custom requests
 
 ```go
 
-	post, err := swiftreq.Get[Post](BASE_URL + "/posts/1").
-		WithQueryParameters(map[string]string{"page": "1"}).
-		WithHeaders(map[string]string{"Content-Type": "application/json"}).
-		Do(context.Background())
+post, err := swiftreq.Get[Post](BASE_URL + "/posts/1").
+	WithQueryParameters(map[string]string{"page": "1"}).
+	WithHeaders(map[string]string{"Content-Type": "application/json"}).
+	Do(context.Background())
 
 ```
 
@@ -56,42 +56,42 @@ Setting retry
 
 ```go
 
-    // Request with exponential backoff (default min wait is 500ms and max wait is 10s)
-    resp, err := swiftreq.Get[string]("http://localhost:3000/retry").
-		WithRequestExecutor(swiftreq.Default().
-			WithExponentialRetry(5)).
-		Do(context.Background())
+// Request with exponential backoff (default min wait is 500ms and max wait is 10s)
+resp, err := swiftreq.Get[string]("http://localhost:3000/retry").
+	WithRequestExecutor(swiftreq.Default().
+		WithExponentialRetry(5)).
+	Do(context.Background())
 
-    // Request with liniar backoff (default min wait is 500ms and max wait is 10s)
-    resp, err := swiftreq.Get[string]("http://localhost:3000/retry").
-		WithRequestExecutor(swiftreq.Default().
-			WithLiniarRetry(5)).
-		Do(context.Background())
+// Request with liniar backoff (default min wait is 500ms and max wait is 10s)
+resp, err := swiftreq.Get[string]("http://localhost:3000/retry").
+	WithRequestExecutor(swiftreq.Default().
+		WithLiniarRetry(5)).
+	Do(context.Background())
 
 ```
 
 Caching responses
 
 ```go
-	swiftreq.Default(). 
-		AddCaching(100 * time.Second) // Get requests will be cached in memory for 100 seconds
+swiftreq.Default(). 
+	AddCaching(100 * time.Second) // Get requests will be cached in memory for 100 seconds
 
-	post, err := swiftreq.Get[Post](BASE_URL + "/posts/1").
-		Do(context.Background())
+post, err := swiftreq.Get[Post](BASE_URL + "/posts/1").
+	Do(context.Background())
 
 ```
 
 Logging and performance monitor
 
 ```go
-	swiftreq.Default(). 
-		AddLogging(slog.Default()).                                // add logger
-		AddPerformanceMonitor(10*time.Millisecond, slog.Default()) // add performance monitor
+swiftreq.Default(). 
+	AddLogging(slog.Default()).                                // add logger
+	AddPerformanceMonitor(10*time.Millisecond, slog.Default()) // add performance monitor
 
-    // Requests will be logged. 
-    // If response time is over 10 ms, a warning will be logged.
-    post, err := swiftreq.Get[Post](BASE_URL + "/posts/1").
-		Do(context.Background())
+// Requests will be logged. 
+// If response time is over 10 ms, a warning will be logged.
+post, err := swiftreq.Get[Post](BASE_URL + "/posts/1").
+	Do(context.Background())
 
 ```
 
@@ -99,21 +99,21 @@ Authentication
 
 ```go
 
-    re := swiftreq.Default()
-        .WithAuthorization("Token", func() (token string, lifeSpan time.Duration, err error) {
-            // Provide the token retrieval.
-            resp, err := swiftreq.Get[string]("http://localhost:3000/auth").
-                WithRequestExecutor(swiftreq.NewRequestExecutor(*http.DefaultClient)).
-                WithHeaders(map[string]string{"Credentials": "user:pass"}).
-                Do(context.Background())
+re := swiftreq.Default()
+	.WithAuthorization("Token", func() (token string, lifeSpan time.Duration, err error) {
+		// Provide the token retrieval.
+		resp, err := swiftreq.Get[string]("http://localhost:3000/auth").
+			WithRequestExecutor(swiftreq.NewRequestExecutor(*http.DefaultClient)).
+			WithHeaders(map[string]string{"Credentials": "user:pass"}).
+			Do(context.Background())
 
-            return resp.Token resp.LifeSpan, resp.Error
-        })
+		return resp.Token resp.LifeSpan, resp.Error
+	})
 
 
-	resp, err := swiftreq.Get[string]("http://localhost:3000/page").
-		WithRequestExecutor(re).
-		Do(context.Background())
+resp, err := swiftreq.Get[string]("http://localhost:3000/page").
+	WithRequestExecutor(re).
+	Do(context.Background())
 
 ```
 
