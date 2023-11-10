@@ -131,7 +131,7 @@ func (re *RequestExecutor) WithExponentialRetry(retry int) *RequestExecutor {
 	return re
 }
 
-func (re *RequestExecutor) WithLiniarRetry(retry int) *RequestExecutor {
+func (re *RequestExecutor) WithLinearRetry(retry int) *RequestExecutor {
 	if re.retryEnabled {
 		return re
 	}

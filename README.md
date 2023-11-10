@@ -65,7 +65,7 @@ resp, err := swiftreq.Get[string]("http://localhost:3000/retry").
 // Request with liniar backoff (default min wait is 500ms and max wait is 10s)
 resp, err := swiftreq.Get[string]("http://localhost:3000/retry").
 	WithRequestExecutor(swiftreq.Default().
-		WithLiniarRetry(5)).
+		WithLinearRetry(5)).
 	Do(context.Background())
 
 ```
