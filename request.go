@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -106,19 +105,16 @@ func (r *Request[T]) Do(ctx context.Context) (*T, error) {
 		return nil, err
 	}
 
-	// if it's a GET, we need to append the query parameters.
 	if r.httpMethod == "GET" {
 		q := u.Query()
 
 		for k, v := range r.queryParameters {
-			// this depends on the type of api, you may need to do it for each of v
 			q.Set(k, strings.Join(v, ","))
 		}
-		// set the query to the encoded parameters
+
 		u.RawQuery = q.Encode()
 	}
 
-	// regardless of GET or POST, we can safely add the body
 	var body []byte
 	if r.payload != nil {
 		body, err = json.Marshal(r.payload)
@@ -147,15 +143,10 @@ func (r *Request[T]) Do(ctx context.Context) (*T, error) {
 		}
 	}
 
-	// for each header passed, add the header value to the request
 	for k, v := range r.headers {
 		req.Header.Set(k, v)
 	}
 
-	// optional: log the request for easier stack tracing
-	log.Printf("%s %s\n", r.httpMethod, req.URL.String())
-
-	// finally, do the request
 	res, err := r.re.pipeline(req)
 	if err != nil {
 		return nil, &Error{
