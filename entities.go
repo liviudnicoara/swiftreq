@@ -1,5 +1,3 @@
-// Package swiftreq provides common error and response structures for HTTP requests in Golang.
-
 package swiftreq
 
 import (
