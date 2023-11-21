@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// PerformanceMiddleware creates a middleware that logs a warning if the HTTP request takes longer than the specified threshold.
 func PerformanceMiddleware(threshold time.Duration, logger *slog.Logger) Middleware {
 	return func(next Handler) Handler {
 		return func(req *http.Request) (*http.Response, error) {
