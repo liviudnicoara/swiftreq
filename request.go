@@ -12,6 +12,7 @@ import (
 	"strings"
 )
 
+// Request represents an HTTP request with fluent methods for customization.
 type Request[T any] struct {
 	re              *RequestExecutor
 	headers         map[string]string
@@ -21,18 +22,22 @@ type Request[T any] struct {
 	queryParameters url.Values
 }
 
+// Get creates a new HTTP GET request.
 func Get[T any](url string) *Request[T] {
 	return newDefaultRequest[T]().
 		WithMethod("GET").
 		WithURL(url)
 }
 
+// Post creates a new HTTP POST request with the specified payload.
 func Post[T any](url string, payload interface{}) *Request[T] {
 	return newDefaultRequest[T]().
 		WithMethod("POST").
 		WithURL(url).
 		WithPayload(payload)
 }
+
+// Put creates a new HTTP PUT request with the specified payload.
 func Put[T any](url string, payload interface{}) *Request[T] {
 	return newDefaultRequest[T]().
 		WithMethod("PUT").
@@ -40,16 +45,19 @@ func Put[T any](url string, payload interface{}) *Request[T] {
 		WithPayload(payload)
 }
 
+// Delete creates a new HTTP DELETE request.
 func Delete[T any](url string) *Request[T] {
 	return newDefaultRequest[T]().
 		WithMethod("DELETE").
 		WithURL(url)
 }
 
+// newDefaultRequest creates a new default Request with default settings.
 func newDefaultRequest[T any]() *Request[T] {
 	return newRequest[T](Default())
 }
 
+// newRequest creates a new Request with the specified RequestExecutor.
 func newRequest[T any](re *RequestExecutor) *Request[T] {
 	return &Request[T]{
 		re: re,
@@ -59,31 +67,37 @@ func newRequest[T any](re *RequestExecutor) *Request[T] {
 	}
 }
 
+// WithMethod sets the HTTP method for the request.
 func (r *Request[T]) WithMethod(httpMethod string) *Request[T] {
 	r.httpMethod = httpMethod
 	return r
 }
 
+// WithURL sets the URL for the request.
 func (r *Request[T]) WithURL(url string) *Request[T] {
 	r.url = url
 	return r
 }
 
+// WithPayload sets the payload for the request.
 func (r *Request[T]) WithPayload(payload interface{}) *Request[T] {
 	r.payload = payload
 	return r
 }
 
+// WithRequestExecutor sets the RequestExecutor for the request.
 func (r *Request[T]) WithRequestExecutor(re *RequestExecutor) *Request[T] {
 	r.re = re
 	return r
 }
 
+// WithHeaders sets the headers for the request.
 func (r *Request[T]) WithHeaders(headers map[string]string) *Request[T] {
 	r.headers = headers
 	return r
 }
 
+// WithQueryParameters sets the query parameters for the request.
 func (r *Request[T]) WithQueryParameters(params map[string]string) *Request[T] {
 	if len(params) == 0 {
 		return r
@@ -99,6 +113,7 @@ func (r *Request[T]) WithQueryParameters(params map[string]string) *Request[T] {
 	return r
 }
 
+// Do executes the HTTP request and returns the response.
 func (r *Request[T]) Do(ctx context.Context) (*T, error) {
 	ok, u, err := isValidURL(r.url)
 	if !ok {
@@ -211,7 +226,7 @@ func (r *Request[T]) Do(ctx context.Context) (*T, error) {
 			responseObject = any(data).(T)
 			parseErr = err
 		default:
-			parseErr = fmt.Errorf("unssuported conversion type: %T", responseObject)
+			parseErr = fmt.Errorf("unsupported conversion type: %T", responseObject)
 		}
 
 		if parseErr != nil {
@@ -226,6 +241,7 @@ func (r *Request[T]) Do(ctx context.Context) (*T, error) {
 	return &responseObject, nil
 }
 
+// isValidURL checks if the given URL is valid and parses it.
 func isValidURL(u string) (bool, *url.URL, error) {
 	parsedURL, err := url.Parse(u)
 

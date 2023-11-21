@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// LoggerMiddleware creates a middleware that logs information about the HTTP request using the provided logger.
 func LoggerMiddleware(logger *slog.Logger) Middleware {
 	return func(next Handler) Handler {
 		return func(r *http.Request) (*http.Response, error) {

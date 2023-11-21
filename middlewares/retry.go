@@ -13,12 +13,14 @@ import (
 	"time"
 )
 
+// redirectsErrorRe, schemeErrorRe, and notTrustedErrorRe are regular expressions to match specific errors.
 var (
 	redirectsErrorRe  = regexp.MustCompile(`stopped after \d+ redirects\z`)
 	schemeErrorRe     = regexp.MustCompile(`unsupported protocol scheme`)
 	notTrustedErrorRe = regexp.MustCompile(`certificate is not trusted`)
 )
 
+// RetryHandler defines parameters for retrying HTTP requests.
 type RetryHandler struct {
 	MinWait    time.Duration
 	MaxWait    time.Duration
@@ -26,6 +28,7 @@ type RetryHandler struct {
 	Backoff    BackoffTime
 }
 
+// shouldRetry checks if the HTTP request should be retried based on the response and error.
 func (rh *RetryHandler) shouldRetry(ctx context.Context, resp *http.Response, err error) (bool, error) {
 	if ctx.Err() != nil {
 		return false, ctx.Err()
@@ -64,6 +67,7 @@ func (rh *RetryHandler) shouldRetry(ctx context.Context, resp *http.Response, er
 	return false, nil
 }
 
+// RetryMiddleware creates a middleware that retries HTTP requests based on the RetryHandler configuration.
 func RetryMiddleware(rh RetryHandler) Middleware {
 	return func(next Handler) Handler {
 		return func(req *http.Request) (*http.Response, error) {
