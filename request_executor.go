@@ -1,3 +1,5 @@
+// Package swiftreq provides a flexible HTTP client library with middleware support for making HTTP requests in Golang.
+
 package swiftreq
 
 import (
@@ -10,6 +12,7 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
+// defaultMinWaitRetry and defaultMaxWaitRetry define default values for minimum and maximum wait time between retries.
 var (
 	defaultMinWaitRetry = 500 * time.Millisecond
 	defaultMaxWaitRetry = 10 * time.Second
@@ -17,6 +20,7 @@ var (
 	defaultRequestExecutor atomic.Value
 )
 
+// init initializes the default RequestExecutor with default settings.
 func init() {
 	defaultRequestExecutor.Store(newDefaultRequestExecutor())
 }
@@ -29,6 +33,7 @@ func SetDefault(re *RequestExecutor) {
 	defaultRequestExecutor.Store(re)
 }
 
+// RequestExecutor is a struct representing an HTTP client with middleware support.
 type RequestExecutor struct {
 	client       http.Client
 	middlewares  []middlewares.Middleware
@@ -43,11 +48,13 @@ type RequestExecutor struct {
 	Logger *slog.Logger
 }
 
+// newDefaultRequestExecutor creates a new default RequestExecutor with default settings.
 func newDefaultRequestExecutor() *RequestExecutor {
 	client := http.Client{Timeout: 30 * time.Second}
 	return NewRequestExecutor(client)
 }
 
+// NewRequestExecutor creates a new RequestExecutor with the provided http.Client.
 func NewRequestExecutor(client http.Client) *RequestExecutor {
 	re := &RequestExecutor{
 		client: client,
@@ -62,11 +69,13 @@ func NewRequestExecutor(client http.Client) *RequestExecutor {
 	return re
 }
 
+// WithTimeout sets the timeout for the RequestExecutor.
 func (re *RequestExecutor) WithTimeout(timeout time.Duration) *RequestExecutor {
 	re.client.Timeout = timeout
 	return re
 }
 
+// WithMiddleware adds a single middleware to the RequestExecutor.
 func (re *RequestExecutor) WithMiddleware(handler middlewares.Middleware) *RequestExecutor {
 	re.middlewares = append(re.middlewares, handler)
 	re.pipeline = re.do()
@@ -78,6 +87,7 @@ func (re *RequestExecutor) WithMiddleware(handler middlewares.Middleware) *Reque
 	return re
 }
 
+// WithMiddlewares adds multiple middlewares to the RequestExecutor.
 func (re *RequestExecutor) WithMiddlewares(handlers ...middlewares.Middleware) *RequestExecutor {
 	re.middlewares = append(re.middlewares, handlers...)
 	re.pipeline = re.do()
@@ -88,18 +98,21 @@ func (re *RequestExecutor) WithMiddlewares(handlers ...middlewares.Middleware) *
 	return re
 }
 
+// AddLogging adds logging middleware to the RequestExecutor.
 func (re *RequestExecutor) AddLogging(logger *slog.Logger) *RequestExecutor {
 	re.Logger = logger
 	re.middlewares = append(re.middlewares, middlewares.LoggerMiddleware(logger))
 	return re
 }
 
+// AddPerformanceMonitor adds performance monitoring middleware to the RequestExecutor.
 func (re *RequestExecutor) AddPerformanceMonitor(threshold time.Duration, logger *slog.Logger) *RequestExecutor {
 	re.Logger = logger
 	re.middlewares = append(re.middlewares, middlewares.PerformanceMiddleware(threshold, logger))
 	return re
 }
 
+// AddCaching adds caching middleware to the RequestExecutor with the specified TTL.
 func (re *RequestExecutor) AddCaching(ttl time.Duration) *RequestExecutor {
 	if re.cacheEnabled {
 		return re
@@ -113,6 +126,7 @@ func (re *RequestExecutor) AddCaching(ttl time.Duration) *RequestExecutor {
 	return re
 }
 
+// WithExponentialRetry adds exponential retry middleware to the RequestExecutor with the specified retry count.
 func (re *RequestExecutor) WithExponentialRetry(retry int) *RequestExecutor {
 	if re.retryEnabled {
 		return re
@@ -131,6 +145,7 @@ func (re *RequestExecutor) WithExponentialRetry(retry int) *RequestExecutor {
 	return re
 }
 
+// WithLinearRetry adds linear retry middleware to the RequestExecutor with the specified retry count.
 func (re *RequestExecutor) WithLinearRetry(retry int) *RequestExecutor {
 	if re.retryEnabled {
 		return re
@@ -149,6 +164,7 @@ func (re *RequestExecutor) WithLinearRetry(retry int) *RequestExecutor {
 	return re
 }
 
+// WithAuthorization adds authorization middleware to the RequestExecutor with the specified schema and authorization function.
 func (re *RequestExecutor) WithAuthorization(schema string, authorize middlewares.AuthorizeFunc) *RequestExecutor {
 	if re.authEnabled {
 		return re
@@ -162,6 +178,7 @@ func (re *RequestExecutor) WithAuthorization(schema string, authorize middleware
 	return re
 }
 
+// do returns a function that executes the HTTP request using the RequestExecutor's http.Client.
 func (re *RequestExecutor) do() func(req *http.Request) (*http.Response, error) {
 	return func(req *http.Request) (*http.Response, error) {
 		return re.client.Do(req)
