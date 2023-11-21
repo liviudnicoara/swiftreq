@@ -1,5 +1,3 @@
-// Package swiftreq provides a simple HTTP client library with a fluent API for making HTTP requests in Golang.
-
 package swiftreq
 
 import (
