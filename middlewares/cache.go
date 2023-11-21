@@ -8,6 +8,7 @@ import (
 	"github.com/patrickmn/go-cache"
 )
 
+// CachingMiddleware creates a middleware that caches the responses of GET requests using the provided cache and time-to-live (TTL).
 func CachingMiddleware(c *cache.Cache, ttl time.Duration) Middleware {
 	return func(next Handler) Handler {
 		return func(req *http.Request) (*http.Response, error) {
