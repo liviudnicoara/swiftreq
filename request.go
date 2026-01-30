@@ -14,7 +14,7 @@ import (
 
 // Request represents an HTTP request with fluent methods for customization.
 type Request[T any] struct {
-	re              *RequestExecutor
+	re              *RequestExec
 	headers         map[string]string
 	httpMethod      string
 	url             string
@@ -58,7 +58,7 @@ func newDefaultRequest[T any]() *Request[T] {
 }
 
 // newRequest creates a new Request with the specified RequestExecutor.
-func newRequest[T any](re *RequestExecutor) *Request[T] {
+func newRequest[T any](re *RequestExec) *Request[T] {
 	return &Request[T]{
 		re: re,
 		headers: map[string]string{
@@ -86,7 +86,7 @@ func (r *Request[T]) WithPayload(payload interface{}) *Request[T] {
 }
 
 // WithRequestExecutor sets the RequestExecutor for the request.
-func (r *Request[T]) WithRequestExecutor(re *RequestExecutor) *Request[T] {
+func (r *Request[T]) WithRequestExecutor(re *RequestExec) *Request[T] {
 	r.re = re
 	return r
 }
